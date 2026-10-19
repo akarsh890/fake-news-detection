@@ -1,25 +1,29 @@
 # Fake News Detection System
 
-A machine-learning-powered web application that analyzes news text and predicts whether it is **Real** or **Fake**. The project combines a React frontend, a Flask REST API, and a trained machine-learning model to provide predictions through a simple user interface.
+A machine-learning-powered web application (**VeritasML**) that analyzes news text and predicts whether its linguistic patterns align with **Real** or **Fake** news articles. The project combines a React 19 + Vite frontend, a Python Flask REST API, a pre-trained `scikit-learn` (`TfidfVectorizer` + `LogisticRegression`) pipeline, and optional MySQL persistence via `PyMySQL`.
 
-## Features
+---
 
-- **Fake News Classification:** Predicts whether submitted news text is real or fake.
-- **Machine Learning Integration:** Uses a pre-trained model to generate predictions.
-- **Interactive Web Interface:** React-based frontend for entering news and viewing results.
-- **REST API:** Flask backend exposes endpoints for health checks and predictions.
-- **Input Validation:** Rejects empty news submissions and text exceeding the configured character limit.
-- **Prediction Confidence:** Returns the model's prediction confidence when available.
+## Architecture & Features
+
+- **Machine Learning Inference Pipeline:** Uses a serialized `scikit-learn==1.6.1` pipeline (`TfidfVectorizer` with 100k unigram/bigram features + `LogisticRegression`) loaded once at server startup from `backend/artifacts/fake_news_pipeline.joblib`.
+- **Resilient Flask REST API:** Exposes `/api/health`, `/api/predict`, and `/api/history` with strict JSON validation, input size limits (20,000 characters), configurable CORS, and safe error handling.
+- **Fault-Tolerant MySQL Persistence:** Saves each submitted article (`news`) and its prediction (`prediction`) atomically in a single transaction when MySQL is configured. If MySQL is unconfigured or unreachable, predictions continue to work seamlessly in stateless mode and clearly report their persistence state.
+- **Modern, Accessible React Dashboard:** Features live API and MySQL status indicators, synthetic test presets, optional headline input, character/word counters, accessible confidence meters, session/database history, and light/dark theme support.
+
+---
 
 ## Technology Stack
 
 | Component | Technologies |
 |---|---|
-| Frontend | React, JavaScript, Vite |
-| Backend | Python, Flask |
-| Machine Learning | Scikit-learn, Joblib |
-| API Communication | HTTP, JSON |
-| Version Control | Git, GitHub |
+| **Frontend** | React 19, Vite 8, CSS Custom Properties (Light/Dark Theme) |
+| **Backend** | Python 3.12, Flask 3.1, Flask-CORS, python-dotenv |
+| **Machine Learning** | scikit-learn `1.6.1`, Joblib, NumPy, SciPy |
+| **Database** | MySQL 8.0.16+, PyMySQL |
+| **Testing & Linting** | Python `unittest`, Node `node:test`, `oxlint` |
+
+---
 
 ## Project Structure
 
@@ -27,71 +31,122 @@ A machine-learning-powered web application that analyzes news text and predicts 
 fake-news-detection/
 ├── backend/
 │   ├── app/
-│   │   └── predictor.py
-│   ├── run.py
-│   └── ...
+│   │   ├── __init__.py
+│   │   ├── db.py                # MySQL connection, health check, atomic save & history
+│   │   └── predictor.py         # Model loading, validation & inference
+│   ├── artifacts/
+│   │   └── fake_news_pipeline.joblib
+│   ├── .env.example             # Environment variable template (safe placeholders)
+│   ├── db.py                    # Compatibility re-export of app.db
+│   ├── requirements.txt         # Backend Python dependencies
+│   ├── run.py                   # Flask application entrypoint
+│   ├── test_db_integration.py   # Unit & MySQL integration test suite
+│   └── test_model.py            # ML pipeline unit test suite
 ├── frontend/
+│   ├── public/
 │   ├── src/
+│   │   ├── App.css              # Dashboard styling
+│   │   ├── App.jsx              # Main React application
+│   │   ├── App.test.js          # Frontend automated tests
+│   │   ├── index.css            # Design system tokens & accessibility rules
+│   │   └── main.jsx
+│   ├── index.html
 │   ├── package.json
-│   └── ...
+│   └── vite.config.js
+├── .env.example                 # Root environment variable template
 ├── .gitignore
+├── fake_news_detection_db.sql   # Non-destructive MySQL schema initialization script
+├── requirements.txt             # Root Python dependency manifest
+├── run.py                       # Root convenience wrapper for backend/run.py
 └── README.md
 ```
 
-*Note: The exact files inside `backend/` and `frontend/` may vary depending on your implementation.*
+---
 
 ## Prerequisites
 
-Install the following before running the application:
+1. **Python 3.12** (`py -3.12` via the Windows Python Launcher).
+   - *Important:* The saved model (`fake_news_pipeline.joblib`) was serialized with `scikit-learn==1.6.1`. Use Python 3.12 so `scikit-learn==1.6.1` installs cleanly without version-mismatch warnings.
+2. **Node.js (v18+)** and **npm**.
+3. **MySQL Server 8.0.16+** *(Optional for stateless predictions; required for database persistence)*.
 
-- Python 3.12
-- Node.js and npm
-- Git
+---
 
-The trained model and any required preprocessing artifacts must also be available in the locations expected by the backend.
+## Windows Installation & Setup Guide
 
-## Installation and Setup
+### 1. Create and Activate the Python 3.12 Virtual Environment
 
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/akarsh890/fake-news-detection.git
-cd fake-news-detection
-```
-
-### 2. Set up the Python backend
-
-From the project root, create and activate a virtual environment.
-
-**Windows PowerShell:**
+From the project root (`C:\Users\sonwa\fake-news-detection`) in PowerShell:
 
 ```powershell
 py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 ```
 
-Install the backend dependencies:
+### 2. Install Python Dependencies
 
 ```powershell
-cd backend
-pip install -r requirements.txt
+pip install -r backend\requirements.txt
 ```
 
-If `requirements.txt` has not yet been created, install the dependencies listed in your project instead of running the command above.
+### 3. Configure Environment Variables
 
-Start the Flask server:
+Copy the example environment file to `backend\.env` (or `.env` in the project root):
 
 ```powershell
-python run.py
+Copy-Item backend\.env.example backend\.env
 ```
 
-The backend should be available at:
+Edit `backend\.env` with your local settings (never commit `.env`):
 
-`http://127.0.0.1:5000`
+```ini
+# MySQL Database Configuration
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_USER=your_mysql_user
+DB_PASSWORD=your_mysql_password
+DB_NAME=fake_news_detection_db
 
-### 3. Set up the React frontend
+# Flask Server Configuration
+FLASK_DEBUG=false
+FLASK_HOST=127.0.0.1
+FLASK_PORT=5000
+CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+```
 
-Open a second terminal from the project root:
+> **Note:** If `DB_USER` or `DB_NAME` are left unset or left as placeholder values (`your_mysql_user`), the backend automatically runs in **stateless mode**—predictions work normally and the API reports `"status": "not_configured"` for persistence.
+
+### 4. MySQL Setup & Safe Schema Initialization (When MySQL is Installed)
+
+If MySQL Server is not yet installed on Windows:
+1. Install MySQL Community Server 8.0+ (e.g., via the official MySQL Installer or `winget install Oracle.MySQL`) and ensure the MySQL Windows service is running on port `3306`.
+2. Initialize the database schema using `fake_news_detection_db.sql`. The script uses `CREATE DATABASE IF NOT EXISTS` and `CREATE TABLE IF NOT EXISTS` so it will **not** drop or overwrite existing data:
+
+```powershell
+Get-Content fake_news_detection_db.sql | mysql -u root -p
+```
+
+3. Update `DB_USER`, `DB_PASSWORD`, and `DB_NAME=fake_news_detection_db` in `backend\.env`.
+
+---
+
+## Running the Application
+
+### 1. Start the Flask Backend
+
+From the project root in PowerShell:
+
+```powershell
+.\.venv\Scripts\python.exe backend\run.py
+```
+
+*(You can also run `.\.venv\Scripts\python.exe run.py` from the root or `python run.py` from `backend/`).*
+
+The API will listen on `http://127.0.0.1:5000`.
+
+### 2. Start the React Frontend
+
+Open a second PowerShell terminal:
 
 ```powershell
 cd frontend
@@ -99,93 +154,117 @@ npm install
 npm run dev
 ```
 
-Open the local URL printed by Vite, usually:
+Open the URL printed by Vite (typically `http://localhost:5173`).
 
-`http://localhost:5173`
+---
 
-Keep both the Flask backend and React development server running while testing the application.
+## Automated Testing & Verification
 
-## API Endpoints
+### Backend Unit & Integration Tests
 
-### Health Check
+From the project root:
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -s backend -p "test_*.py" -v
+```
+
+- Runs 20 unit and endpoint tests covering ML pipeline loading, valid predictions, empty/whitespace rejection, >20,000 character rejection, malformed JSON, wrong data types, simulated database failure resilience, transaction commit/rollback, `/api/health`, and `/api/history`.
+- When `DB_USER` and `DB_NAME` are configured with a reachable MySQL server, 6 additional live database integration tests (`DatabaseTests`) automatically run using isolated `[TEST]` rows and clean up after themselves.
+
+### Frontend Tests, Linting & Production Build
+
+From `frontend/`:
+
+```powershell
+npm test
+npm run lint
+npm run build
+```
+
+---
+
+## API Reference
+
+### 1. Health & Diagnostics
 
 **Endpoint:** `GET /api/health`
 
-Checks whether the backend is running.
-
-Example response:
+Example response (`200 OK`):
 
 ```json
 {
   "status": "ok",
-  "message": "Fake News Detection API is running"
+  "message": "Fake News Detection API is running",
+  "model": {
+    "loaded": true,
+    "model_file": "fake_news_pipeline.joblib",
+    "pipeline_steps": ["tfidf", "classifier"]
+  },
+  "database": {
+    "configured": false,
+    "connected": false,
+    "status": "not_configured",
+    "message": "MySQL is not configured (set DB_USER and DB_NAME in .env to enable persistence)."
+  }
 }
 ```
 
-### Predict News
+### 2. Predict News
 
-**Endpoint:** `POST /api/predict`
-
-Accepts news text and returns a model prediction.
+**Endpoint:** `POST /api/predict` (add `?meta=1` or `"include_meta": true` to include persistence metadata)
 
 Example request:
 
 ```json
 {
-  "text": "Enter the news article you want to analyze."
+  "headline": "Regional Rail Expansion Plan Approved",
+  "text": "The Department of Transportation announced on Tuesday that federal and municipal agencies have finalized a five-year infrastructure agreement."
 }
 ```
 
-The response contains the prediction and any additional fields returned by the model.
+Standard response (`POST /api/predict`, `200 OK`):
 
-The API rejects empty input and text longer than 20,000 characters.
+```json
+{
+  "label": "Real",
+  "confidence": 65.46
+}
+```
 
-## How It Works
+Extended response (`POST /api/predict?meta=1`, `200 OK`):
 
-1. The user enters a news article in the React interface.
-2. The frontend sends the article to the Flask prediction API.
-3. The backend validates the input.
-4. The trained machine-learning model processes the text.
-5. The backend returns the predicted class and available confidence information.
-6. The frontend displays the result to the user.
+```json
+{
+  "label": "Real",
+  "confidence": 65.46,
+  "persistence": {
+    "saved": false,
+    "status": "not_configured",
+    "message": "MySQL is not configured; prediction returned in stateless mode."
+  }
+}
+```
 
-## Testing
+### 3. Recent Predictions History
 
-The following functionality has been tested during development:
+**Endpoint:** `GET /api/history?limit=10`
 
-- Loading the trained model locally.
-- Checking the Flask health endpoint.
-- Submitting news through the prediction endpoint.
-- Generating predictions through the React interface.
-- Validating empty input.
+Returns recent predictions stored in MySQL when connected, or `{"available": false, "items": []}` when operating in stateless mode.
 
-## Database Integration
+---
 
-MySQL integration is planned as a separate development task. It can be used to store prediction history, including submitted text, predicted class, confidence, and timestamps.
+## Common Errors & Solutions
 
-Database functionality should be documented as implemented only after it has been integrated and tested.
+| Issue | Cause | Solution |
+|---|---|---|
+| `ModuleNotFoundError: No module named 'flask_cors'` or `'pymysql'` | Running global Python or an incomplete virtual environment | Activate `.venv` (`.\.venv\Scripts\Activate.ps1`) and run `pip install -r backend\requirements.txt`. |
+| `InconsistentVersionWarning` when loading `fake_news_pipeline.joblib` | Environment has `scikit-learn 1.9.x` (e.g. under Python 3.14) instead of `1.6.1` | Recreate `.venv` with Python 3.12 (`py -3.12 -m venv .venv`) and install `scikit-learn==1.6.1`. |
+| MySQL badge shows `Stateless Mode` or `Unreachable` | `.env` not created or MySQL Server is not running on port 3306 | Ensure MySQL Server is running, run `fake_news_detection_db.sql`, and configure `backend\.env`. |
 
-## Future Improvements
+---
 
-- Integrate MySQL for persistent prediction history.
-- Add user authentication and prediction history if required.
-- Improve model evaluation using precision, recall, F1-score, and a confusion matrix.
-- Add automated backend and frontend tests.
-- Improve error handling and deployment configuration.
-- Deploy the application for public access.
+## Known Model Limitations
 
-## Limitations
-
-- Predictions are model-based estimates and may be incorrect.
-- Confidence scores should not be interpreted as proof that a news article is true or false.
-- Reliable performance depends on the quality and representativeness of the training data.
-- The system should be used as a preliminary screening tool rather than the sole basis for judging news credibility.
-
-## Contributors
-
-- **Akarsh Diwakar** — Project development, machine-learning integration, Flask API, and React frontend.
-- **Collaborators** — Contributions to be added as the project develops.
-
-## License
-
-No license has been specified yet. Add an appropriate license before allowing others to reuse or redistribute the project.
+- **Statistical Pattern Matching, Not Fact-Checking:** The model uses TF-IDF n-gram frequencies and Logistic Regression learned from its training dataset. It evaluates writing style and lexical patterns rather than verifying real-world facts.
+- **Uncalibrated Confidence Scores:** The confidence percentage (`predict_proba`) represents the classifier's internal probability estimate for the predicted class, not an objective probability that an article is factually true or false.
+- **Domain & Temporal Drift:** Articles covering topics, regions, or writing styles underrepresented in the training data may be misclassified. Always verify news stories against authoritative primary sources.

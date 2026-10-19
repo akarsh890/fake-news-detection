@@ -12,7 +12,7 @@
             "driver": "MySQL",
             "name": "127.0.0.1",
             "username": "root",
-            "database": "FakeNewsDB"
+            "database": "fake_news_detection_db"
         }
     ]
 }

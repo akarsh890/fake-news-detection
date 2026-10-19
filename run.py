@@ -1,44 +1,19 @@
+"""Convenience wrapper so `python run.py` works from the repository root as well as `backend/`."""
+import os
+import sys
+from pathlib import Path
 
-from flask import Flask, request, jsonify
-from flask_cors import CORS
+BACKEND_DIR = Path(__file__).resolve().parent / "backend"
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
 
-from app.predictor import predict_news
-from app.db import save_prediction
-
-app = Flask(__name__)
-
-CORS(app, origins=["http://localhost:5173"])
-
-
-@app.get("/api/health")
-def health():
-    return jsonify({
-        "status": "ok",
-        "message": "Fake News Detection API is running"
-    })
-
-
-@app.post("/api/predict")
-def predict():
-    data = request.get_json(silent=True) or {}
-    text = data.get("text", "")
-
-    if not isinstance(text, str) or not text.strip():
-        return jsonify({"error": "Please provide news text"}), 400
-
-    if len(text) > 20000:
-        return jsonify({"error": "Text exceeds 20,000 characters"}), 400
-
-    try:
-        result = predict_news(text)
-        # Persist to MySQL; failures are logged inside and never affect the response.
-        headline = data.get("headline")
-        save_prediction(text, result["label"], result["confidence"], headline=headline)
-        return jsonify(result)
-    except Exception:
-        app.logger.exception("Prediction failed")
-        return jsonify({"error": "Prediction failed"}), 500
-
+from run import app  # noqa: E402
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    debug_mode = os.getenv("FLASK_DEBUG", "false").strip().lower() in ("1", "true", "yes")
+    host = os.getenv("FLASK_HOST", "127.0.0.1").strip() or "127.0.0.1"
+    try:
+        port = int(os.getenv("FLASK_PORT", "5000"))
+    except ValueError:
+        port = 5000
+    app.run(host=host, port=port, debug=debug_mode)

@@ -1,10 +1,11 @@
 -- =====================================================================
--- Fake News Detection System - MySQL schema
+-- Fake News Detection System - MySQL schema (Safe / Non-Destructive)
 -- Requires MySQL 8.0.16+ (CHECK constraints are enforced from this version)
 -- =====================================================================
 
-DROP DATABASE IF EXISTS fake_news_detection_db;
-CREATE DATABASE fake_news_detection_db
+-- NOTE: Destructive DROP DATABASE is intentionally omitted to protect existing data.
+-- To reset a local development database manually, drop it explicitly before running.
+CREATE DATABASE IF NOT EXISTS fake_news_detection_db
     CHARACTER SET utf8mb4
     COLLATE utf8mb4_unicode_ci;
 
@@ -13,7 +14,7 @@ USE fake_news_detection_db;
 -- ---------------------------------------------------------------------
 -- USER
 -- ---------------------------------------------------------------------
-CREATE TABLE `user` (
+CREATE TABLE IF NOT EXISTS `user` (
     user_id       INT UNSIGNED  NOT NULL AUTO_INCREMENT,
     name          VARCHAR(100)  NOT NULL,
     email         VARCHAR(255)  NOT NULL,
@@ -27,7 +28,7 @@ CREATE TABLE `user` (
 -- ---------------------------------------------------------------------
 -- ADMIN
 -- ---------------------------------------------------------------------
-CREATE TABLE `admin` (
+CREATE TABLE IF NOT EXISTS `admin` (
     admin_id      INT UNSIGNED  NOT NULL AUTO_INCREMENT,
     name          VARCHAR(100)  NOT NULL,
     email         VARCHAR(255)  NOT NULL,
@@ -39,7 +40,7 @@ CREATE TABLE `admin` (
 -- ---------------------------------------------------------------------
 -- NEWS  (USER 1 : N NEWS)
 -- ---------------------------------------------------------------------
-CREATE TABLE `news` (
+CREATE TABLE IF NOT EXISTS `news` (
     news_id       INT UNSIGNED  NOT NULL AUTO_INCREMENT,
     user_id       INT UNSIGNED  NOT NULL,
     headline      VARCHAR(500)  NOT NULL,
@@ -59,7 +60,7 @@ CREATE TABLE `news` (
 -- PREDICTION  (NEWS 1 : N PREDICTION)
 -- confidence_score: 0.0000 - 1.0000 (e.g. Logistic Regression probability)
 -- ---------------------------------------------------------------------
-CREATE TABLE `prediction` (
+CREATE TABLE IF NOT EXISTS `prediction` (
     prediction_id    INT UNSIGNED  NOT NULL AUTO_INCREMENT,
     news_id          INT UNSIGNED  NOT NULL,
     result           ENUM('Real','Fake') NOT NULL,
@@ -81,7 +82,7 @@ CREATE TABLE `prediction` (
 -- DATASET  (ADMIN 1 : N DATASET)
 -- admin_id is nullable so records survive if an admin is removed.
 -- ---------------------------------------------------------------------
-CREATE TABLE `dataset` (
+CREATE TABLE IF NOT EXISTS `dataset` (
     dataset_id    INT UNSIGNED  NOT NULL AUTO_INCREMENT,
     admin_id      INT UNSIGNED  NULL,
     news_text     MEDIUMTEXT    NOT NULL,

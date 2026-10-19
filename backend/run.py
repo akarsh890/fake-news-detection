@@ -3,6 +3,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 
 from app.predictor import predict_news
+from app.db import save_prediction
 
 app = Flask(__name__)
 
@@ -30,6 +31,9 @@ def predict():
 
     try:
         result = predict_news(text)
+        # Persist to MySQL; failures are logged inside and never affect the response.
+        headline = data.get("headline")
+        save_prediction(text, result["label"], result["confidence"], headline=headline)
         return jsonify(result)
     except Exception:
         app.logger.exception("Prediction failed")

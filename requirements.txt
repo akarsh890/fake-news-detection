@@ -1,0 +1,6 @@
+flask
+flask-cors
+scikit-learn==1.6.1
+joblib
+PyMySQL
+python-dotenv
